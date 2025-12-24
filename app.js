@@ -6,11 +6,18 @@ const mongoose = require('mongoose')
 const placesRoutes = require('./routes/places-routes');
 const usersRoutes = require('./routes/users-routes')
 const HttpError = require('./models/http-error')
+const uploadPath = path.join(__dirname, 'uploads', 'images');
 
 const app = express();
 //we added this body parser here as universal we can now use req.body anywhere in the rest folders
 app.use(bodyParser.json());
-app.use('/uploads/images',express.static(path.join('uploads', 'images'))) // to serve the image statically
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+}
+app.use(
+  '/uploads/images',
+  express.static(path.join(__dirname, 'uploads', 'images'))
+); // to serve the image statically
 //console.log('placesRoutes:', placesRoutes);
 //console.log('usersRoutes:', usersRoutes);
 app.use((req, res, next) => {
