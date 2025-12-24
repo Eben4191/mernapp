@@ -68,3 +68,6 @@ app.listen(process.env.PORT || 10000)
 .catch((error)=>{
     console.log(error)
 })
+
+console.log("Current dir:", __dirname);
+console.log("Upload path:", path.join(__dirname, "uploads", "images"));
