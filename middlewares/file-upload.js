@@ -1,6 +1,4 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const MIME_TYPE_MAP = {
     'image/png': 'png',
@@ -12,14 +10,12 @@ const MIME_TYPE_MAP = {
 const fileUpload = multer({
     limits: { fileSize: 500000 },
     storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-            const uploadPath = path.join(__dirname, '..', 'uploads', 'images');
-            fs.mkdirSync(uploadPath, { recursive: true });
-            cb(null, uploadPath); // telling multer where to store our image
+        destination:(req, file, cb)=>{
+            cb(null, 'uploads/images') //telling multer where to store our image
         },
-        filename: (req, file, cb) => {
-            const ext = MIME_TYPE_MAP[file.mimetype] || 'bin';
-            cb(null, uuidv4() + '.' + ext);
+        filename:(req, file, cb)=>{
+            const ext = MIME_TYPE_MAP[file.mimetype]
+            cb(null, uuidv4() + '.' + ext)
         }
     }),
    fileFilter: (req, file, cb) => {
