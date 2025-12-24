@@ -1,27 +1,15 @@
+require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const fs = require('fs')
 const path = require('path')
 const mongoose = require('mongoose')
 const placesRoutes = require('./routes/places-routes');
 const usersRoutes = require('./routes/users-routes')
 const HttpError = require('./models/http-error')
-const uploadPath = path.join(__dirname, 'uploads', 'images');
 
 const app = express();
-//we added this body parser here as universal we can now use req.body anywhere in the rest folders
-app.use(bodyParser.json());
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
-app.use(
-  '/uploads/images',
-  express.static(path.join(__dirname, 'uploads', 'images'))
-); // to serve the image statically
-//console.log('placesRoutes:', placesRoutes);
-//console.log('usersRoutes:', usersRoutes);
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // or frontend URL
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
   res.setHeader(
     'Access-Control-Allow-Headers',
     'Origin, X-Requested-With, Content-Type, Accept, Authorization'
@@ -37,6 +25,11 @@ app.use((req, res, next) => {
 
   next();
 });
+app.use(express.json());
+// serve images statically
+app.use('/uploads/images', express.static(path.join(__dirname, 'uploads', 'images'))); // to serve the image statically
+//console.log('placesRoutes:', placesRoutes);
+//console.log('usersRoutes:', usersRoutes);
 
 
 
@@ -47,10 +40,10 @@ app.use((req, res, next) => {
 });
 //universal error handling
 app.use((error, req, res, next)=>{
-  if(req.file){
-    fs.unlink(req.file.path, err => {}); //this line of code help us unlike the image anything there is an error instead of saving the image on the server
+  if (req.file) {
+    fs.unlink(req.file.path, err => { if (err) console.error(err); }); // remove uploaded file on error
   }
-if(res.headerSent){
+if (res.headersSent) {
     return next(error);
 }
 let statusCode;
@@ -70,11 +63,8 @@ res.status(statusCode).json({ message: error.message || "An unknown error occurr
 });
 mongoose.connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ivvaluu.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`)
 .then(()=>{
-app.listen(process.env.PORT || 10000)
+app.listen(process.env.PORT || 5000)
 })
 .catch((error)=>{
     console.log(error)
 })
-
-console.log("Current dir:", __dirname);
-console.log("Upload path:", path.join(__dirname, "uploads", "images"));
