@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 const HttpError = require('../models/http-error');
 const User = require('../models/user');
 const crypto = require('crypto');
+const uploadToCloudinary = require('../util/cloudinary-upload');//importing the cloudinary upload function
 const sendVerificationEmail = require('../util/send-email');
 const getUsers = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;   // current page
@@ -40,6 +41,10 @@ const getUsers = async (req, res, next) => {
 
 
 const signup = async (req, res, next) => {
+      console.log('SIGNUP HIT');
+  console.log('BODY:', req.body);
+  console.log('FILE:', req.file);
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return next(new HttpError('Invalid inputs, please check your data', 422));
@@ -69,11 +74,22 @@ const signup = async (req, res, next) => {
   const verificationToken = crypto.randomBytes(3).toString('hex'); // 6 char hex code
   const verificationExpires = Date.now() + 3600000; // 1 hour from now
 
+  let imageUrl = null;
+
+if (req.file) {
+  try {
+    const result = await uploadToCloudinary(req.file.buffer, 'mern-users');
+    imageUrl = result.secure_url;
+  } catch (err) {
+    return next(new HttpError('Image upload failed', 500));
+  }
+}
+
   const createdUser = new User({
     email,
     firstname,
     lastname,
-    image: req.file ? req.file.path : null,
+    image: imageUrl,
     password: hashedPassword,
     verificationToken,
      verificationExpires, // <-- store expiration
@@ -126,7 +142,7 @@ let token;
 try{
 token =  jwt.sign(
     {userId: existingUser.id, email: existingUser.email}, 
-    'supersecret_dont_share',
+    process.env.JWT_KEY,
      {expiresIn:'1h'}
     );
 }catch(err){

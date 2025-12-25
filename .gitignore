@@ -4,5 +4,4 @@ node_modules/
 # Environment variables
 nodemon.json
 
-# Uploaded files
-uploads/
+

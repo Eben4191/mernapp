@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const {validationResult} = require('express-validator');
 const Place = require('../models/place')
 const User = require('../models/user');
+const uploadToCloudinary = require('../util/cloudinary-upload');
+
 
 
 const getPlaceById = async ( req, res, next)=>{
@@ -18,7 +20,11 @@ const getPlaceById = async ( req, res, next)=>{
         const error = new HttpError('could not find a place for the provided Id', 404)
         return next(error);
     }
-   res.json({place: place.toObject({getters:true})});
+   const placeObj = place.toObject({getters:true});
+   if (placeObj.image && placeObj.image.startsWith('/')) {
+     placeObj.image = `${req.protocol}://${req.get('host')}${placeObj.image}`;
+   }
+   res.json({place: placeObj});
 };
 
 const getPlacesByUserId = async (req,res,next)=>{
@@ -43,13 +49,24 @@ const createPlace = async (req, res, next)=>{
   if(!errors.isEmpty()){
     throw new HttpError('invalid inputs passed, please check your data.', 422);
   }
-const {title, description, address, location, creator} = req.body;
+  let imageUrl = null;
+
+if (req.file) {
+  try {
+    const result = await uploadToCloudinary(req.file.buffer, 'mern-places');
+    imageUrl = result.secure_url;
+  } catch (err) {
+    return next(new HttpError('Image upload failed', 500));
+  }
+}
+
+const {title, description, address, location,} = req.body;
 const createdPlace = new Place({
     title,
     description,
     address,
    location,
-   image:  req.file ? req.file.path : null,
+   image:  imageUrl,
    creator:  req.userData.userId
 });
 
@@ -82,7 +99,7 @@ await sess.commitTransaction();
 const error = new HttpError('Creating place failed, pleace try agpin', 500);
 return next(error);
 }
-res.status(201).json({place:createdPlace});
+  res.status(201).json({place:createdPlace});
 }
 const updatePlace = async (req, res, next)=>{
     const error = validationResult(req);
