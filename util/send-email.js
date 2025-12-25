@@ -1,21 +1,19 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendVerificationEmail = async (email, verificationToken) => {
-  const transporter = nodemailer.createTransport({
-    service: 'Gmail', // or SendGrid/Mailgun
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-
-  const mailOptions = {
-    from: 'no-reply@yourapp.com',
+  await resend.emails.send({
+    from: 'onboarding@resend.dev', // works without domain setup
     to: email,
     subject: 'Email Verification',
-    html: `<p>Your Places App verification code is: <b>${verificationToken}</b></p>`
-  }; 
-  await transporter.sendMail(mailOptions);
+    html: `
+      <h2>Email Verification</h2>
+      <p>Your verification code is:</p>
+      <h1>${verificationToken}</h1>
+      <p>This code expires in 1 hour.</p>
+    `
+  });
 };
 
 module.exports = sendVerificationEmail;
