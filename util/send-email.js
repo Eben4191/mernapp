@@ -1,3 +1,7 @@
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const sendVerificationEmail = async (email, verificationToken) => {
   console.log('📨 Attempting Resend email…');
 
@@ -10,3 +14,5 @@ const sendVerificationEmail = async (email, verificationToken) => {
 
   console.log('📬 Resend response:', response);
 };
+
+module.exports = sendVerificationEmail;
