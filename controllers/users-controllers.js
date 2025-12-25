@@ -41,7 +41,7 @@ const getUsers = async (req, res, next) => {
 
 
 const signup = async (req, res, next) => {
-      console.log('SIGNUP HIT');
+  console.log('SIGNUP HIT');
   console.log('BODY:', req.body);
   console.log('FILE:', req.file);
 
@@ -71,19 +71,19 @@ const signup = async (req, res, next) => {
   }
 
   // Generate verification code
-  const verificationToken = crypto.randomBytes(3).toString('hex'); // 6 char hex code
-  const verificationExpires = Date.now() + 3600000; // 1 hour from now
+  const verificationToken = crypto.randomBytes(3).toString('hex');
+  const verificationExpires = Date.now() + 3600000;
 
   let imageUrl = null;
 
-if (req.file) {
-  try {
-    const result = await uploadToCloudinary(req.file.buffer, 'mern-users');
-    imageUrl = result.secure_url;
-  } catch (err) {
-    return next(new HttpError('Image upload failed', 500));
+  if (req.file) {
+    try {
+      const result = await uploadToCloudinary(req.file.buffer, 'mern-users');
+      imageUrl = result.secure_url;
+    } catch (err) {
+      return next(new HttpError('Image upload failed', 500));
+    }
   }
-}
 
   const createdUser = new User({
     email,
@@ -92,23 +92,29 @@ if (req.file) {
     image: imageUrl,
     password: hashedPassword,
     verificationToken,
-     verificationExpires, // <-- store expiration
+    verificationExpires,
     places: []
   });
 
-  try {
-    await createdUser.save();
-    await sendVerificationEmail(email, verificationToken); // send email
-  } catch (err) {
-    console.log(err);
-    return next(new HttpError('Could not create user or send email', 500));
-  }
+  // ✅ Save user FIRST
+  await createdUser.save();
 
+  // ✅ Fire-and-forget email (DO NOT await)
+  sendVerificationEmail(email, verificationToken)
+    .then(() => {
+      console.log('Verification email sent to:', email);
+    })
+    .catch(err => {
+      console.error('Verification email failed:', err.message);
+    });
+
+  // ✅ Respond immediately
   res.status(201).json({
     message: 'Signup successful! Check your email for verification code.',
     userId: createdUser.id
   });
 };
+
 const login = async (req, res, next)=>{
 const { email, password} = req.body;
 let existingUser;
@@ -211,7 +217,6 @@ const resendVerificationCode = async (req, res, next) => {
   try {
     user = await User.findOne({ email });
   } catch (err) {
-    console.log("DB error:", err); // <-- log inside catch
     return next(new HttpError('Something went wrong', 500));
   }
 
@@ -223,23 +228,26 @@ const resendVerificationCode = async (req, res, next) => {
     return next(new HttpError('User already verified', 400));
   }
 
-  // Generate new verification token and expiration
-  const newToken = crypto.randomBytes(3).toString('hex'); // 6-char hex code
-  const newExpiration = Date.now() + 3600000; // 1 hour
+  const newToken = crypto.randomBytes(3).toString('hex');
+  const newExpiration = Date.now() + 3600000;
 
   user.verificationToken = newToken;
   user.verificationExpires = newExpiration;
 
-  try {
-    await user.save();
-    await sendVerificationEmail(user.email, newToken); // Send new code
-    console.log("Sent new verification email to:", user.email, "Code:", newToken);
-  } catch (err) {
-    console.log("Email send error:", err);
-    return next(new HttpError('Could not send verification code', 500));
-  }
+  await user.save();
 
-  res.status(200).json({ message: 'New verification code sent to your email' });
+  // ✅ Fire-and-forget resend email
+  sendVerificationEmail(user.email, newToken)
+    .then(() => {
+      console.log('Resent verification email to:', user.email);
+    })
+    .catch(err => {
+      console.error('Resend email failed:', err.message);
+    });
+
+  res.status(200).json({
+    message: 'New verification code sent to your email'
+  });
 };
 
 
